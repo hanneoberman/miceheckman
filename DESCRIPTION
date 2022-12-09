@@ -1,0 +1,11 @@
+Package: miceheckman
+Title: Additional Imputation Methods for 'mice', According to the Heckman Model
+Version: 0.0.0.9000
+Authors@R: 
+    person("Hanne", "Oberman", , "h.i.oberman@uu.nl", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-3276-2141"))
+Description: Impute (clustered) data according to the Heckman selection model for MNAR data.
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.1
