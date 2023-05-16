@@ -44,6 +44,12 @@
 #' @author Julius Center Methods Group UMC, 2022
 #' @family univariate imputation functions
 #' @keywords datagen
+#' @examples
+#' # example code
+#' library(mice)
+#' pred <- make.predictorMatrix(nhanes)
+#' pred[, "age"] <- -3
+#' mice(nhanes, pred = pred, meth = "2l.2stage.heckman")
 #' @export
 #'
 
