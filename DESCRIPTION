@@ -5,7 +5,7 @@ Version: 0.0.0.9000
 Authors@R: 
     c(person("Hanne", "Oberman", , "h.i.oberman@uu.nl", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-3276-2141")),
-    person("Johanna", "Muñoz", , "h.i.oberman@uu.nl", role = c("aut", "ctb"),
+    person("Johanna", "Muñoz", , "j.munozavila@umcutrecht.nl", role = c("aut", "ctb"),
            comment = c(ORCID = "0000-0002-2384-5415")))
 Description: Impute (clustered) data according to the Heckman selection
     model for MNAR data.

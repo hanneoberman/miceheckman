@@ -3,7 +3,7 @@
 #' Imputes outcome and predictor variables that follow an MNAR mechanism
 #' according to Heckman's model and come from a multilevel database such as
 #' individual participant data.
-#' @aliases mice.impute.2l.heckman 2l.heckman
+#' @aliases mice.impute.2l.2stage.heckman 2l.2stage.heckman
 #' @param y Vector to be imputed
 #' @param ry Logical vector of length \code{length(y)} indicating the
 #' the subset \code{y[ry]} of elements in \code{y} to which the imputation
@@ -17,12 +17,15 @@
 #' 1: Predictor in both the outcome and selection,-2: Cluster id (study id),
 #' -3: Predictor only in the selection model, -4: Predictor only in the outcome
 #' model}
-#' @param pmm  predictive mean matching can be applied only for for missing continuous variables: "TRUE","FALSE"
+#' @param pmm  predictive mean matching can be applied only for for missing
+#' continuous variables: "FALSE","TRUE"
+#' @param ypmm vector of donor values of y to perform the predictive mean matching,
+#' in case ypmm is not provided, the observable values of y are used.
 #' @param meta_method meta_analysis estimation method for random effects :
 #' "ml" (maximum likelihood), "reml" (restricted maximum likelihood) or "mm"
 #' method of moments.
 #' @param ... Other named arguments. Not used.
-#' @name mice.impute.2l.heckman
+#' @name mice.impute.2l.2stage.heckman
 #' @return Vector with imputed data, of type binary or continuous
 #' @details Imputes systematically and sporadically missing binary and continuous
 #'  univariate variables that follow a MNAR mechanism according to the Heckman
@@ -39,14 +42,25 @@
 #' method will be based on the simple Heckman model.
 #' Added:
 #' @author Julius Center Methods Group UMC, 2022
+#' @family univariate imputation functions
+#' @keywords datagen
+#' @examples
+#' # example code
+#' library(mice)
+#' pred <- make.predictorMatrix(nhanes)
+#' pred[, "age"] <- -3
+#' mice(nhanes, pred = pred, meth = "2l.2stage.heckman")
 #' @export
-mice.impute.2l.heckman <-
+#'
+
+mice.impute.2l.2stage.heckman <-
   function(y,
            ry,
            x,
            wy = NULL,
            type,
            pmm = FALSE,
+           ypmm = NULL,
            meta_method = "reml",
            ...) {
     # 1. Define variables and dataset----
@@ -62,11 +76,9 @@ mice.impute.2l.heckman <-
       colnames(x)[type == -4] # names of variables in outcome model alone
 
     # # Define y type
-    if (is.factor(y) & nlevels(y) == 2) {
-      # message(" Note. The missing variable is assumed to be binomially distributed.")
+    if (class(y) == "factor" & nlevels(y) == 2) {
       family <- "binomial"
     } else{
-      # message(" Note. The missing variable is assumed to be normally distributed.")
       family <- "gaussian"
     }
 
@@ -74,7 +86,7 @@ mice.impute.2l.heckman <-
     # Check if group variable is defined
     if (length(colnames(x)[type == -2]) == 0) {
       message(
-        " No group variable has been provided, the Heckman imputation model will be applied globally to the dataset."
+        "No group variable has been provided, the Heckman imputation model will be applied globally to the dataset."
       )
       Grp_est <-
         0 # Group indicator 0: Heckman on full dataset, 1: Heckman at cluster level
@@ -93,11 +105,11 @@ mice.impute.2l.heckman <-
 
     # Define outcome and selection equation
     out <-
-      stats::as.formula(paste0("y", "~", paste(c(
+      as.formula(paste0("y", "~", paste(c(
         bos_name, out_name
       ), collapse = "+")))
     sel <-
-      stats::as.formula(paste0("ry", "~", paste(c(
+      as.formula(paste0("ry", "~", paste(c(
         sel_name, bos_name
       ), collapse = "+")))
 
@@ -208,6 +220,7 @@ mice.impute.2l.heckman <-
               sigma_star = star$sigma_star,
               rho_star = star$rho_star,
               pmm = pmm,
+              ypmm = ypmm,
               y = y,
               ry = ry
             )
@@ -233,6 +246,7 @@ mice.impute.2l.heckman <-
             sigma_star = star$sigma_star,
             rho_star = star$rho_star,
             pmm = pmm,
+            ypmm = ypmm,
             y = y,
             ry = ry
           )
@@ -262,8 +276,6 @@ copulaIPD <- function(data, sel, out, family, send) {
   ),
   silent = TRUE)
 
-
-
   if (!any(inherits(fit, "try-error"))) {
     # model is estimable
     ev <-
@@ -278,9 +290,8 @@ copulaIPD <- function(data, sel, out, family, send) {
     #MAR indication
     CIcon <- summary(fit)$CItheta
     MNAR_ind <-
-      !(abs(CIcon[[1]] - CIcon[[2]]) < 0.001 &
-          CIcon[[1]] < 0 &
-          CIcon[[2]] > 0) # exclusion of cases that blow up variance
+      !(CIcon[[1]] > -0.001 &
+          CIcon[[2]] < 0.001) # exclusion of cases that blow up variance
 
     if (MNAR_ind) {
       fit_ind <- 2
@@ -307,11 +318,11 @@ copulaIPD <- function(data, sel, out, family, send) {
         family = family,
         method = "REML"
       ))
-
+    fit_ind <- 0
     if (!any(inherits(gam1, "try-error")) &
         !any(inherits(gam2, "try-error"))) {
-      coefficients <- c(gam1$coefficients, gam2$coefficients)
-      if (all(!is.na(coefficients))) {
+      vp <- c(diag(gam1$Vp), diag(gam2$Vp))
+      if (all(c(!is.na(coefficients), vp != 0))) {
         s     <- ifelse(family != "binomial", 1, 0)
         ncol1 <- ncol(gam1$Vp)
         ncol2 <- ncol(gam2$Vp)
@@ -322,10 +333,10 @@ copulaIPD <- function(data, sel, out, family, send) {
         Vb[1:ncol1, 1:ncol1] <- gam1$Vp
         Vb[(ncol1 + 1):(ncol1 + ncol2), (ncol1 + 1):(ncol1 + ncol2)] <-
           gam2$Vp
-
+        Vb[nrow(Vb), nrow(Vb)] <- 1 / nrow(data)
         if (family != "binomial") {
           coefficients <- c(coefficients, sigma.star = log(sqrt(gam2$scale)))
-          Vb[(ncol1 + ncol2 + 1), (ncol1 + ncol2 + 1)] <- gam2$V.sp
+          Vb[(nrow(Vb) - 1), (nrow(Vb) - 1)] <- gam2$V.sp
         }
 
         fit$coefficients <- c(coefficients, theta.star = 0)
@@ -686,6 +697,7 @@ gen_y_star <-
            sigma_star,
            rho_star,
            pmm,
+           ypmm,
            y,
            ry) {
     XOBO <-
@@ -703,8 +715,13 @@ gen_y_star <-
         stats::rnorm(nrow(XSBS), 0, sd = sigma_star)
 
       if (pmm == TRUE) {
-        idx <- mice::matchindex(y[ry == 1], y.star)
-        y.star <- y[ry == 1][idx]
+        if (is.null(ypmm)) {
+          idx <- mice::matchindex(y[ry == 1], y.star)
+          y.star <- y[ry == 1][idx]
+        } else{
+          idx <- mice::matchindex(ypmm, y.star)
+          y.star <- ypmm[idx]
+        }
       }
 
     } else {
@@ -718,7 +735,7 @@ gen_y_star <-
                p.star == "1" | (is.infinite(p.star) & p.star > 0)] <- 1.0
 
       y.star <- rep(levels(y)[1], nrow(XOBO))
-      y.star[stats::runif(nrow(XOBO)) < p.star] <- levels(y)[2]
+      y.star[runif(nrow(XOBO)) < p.star] <- levels(y)[2]
 
     }
 
