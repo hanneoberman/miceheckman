@@ -47,9 +47,14 @@
 #' @examples
 #' # example code
 #' library(mice)
-#' pred <- make.predictorMatrix(nhanes)
-#' pred[, "age"] <- -3
-#' mice(nhanes, pred = pred, meth = "2l.2stage.heckman")
+#' pred <- make.predictorMatrix(obesity)
+#' pred[, "cluster"] <- -2
+#' pred[, "time"] <- -3
+#' meth <- make.method(obesity)
+#' meth[c("age", "height")] <- "2l.norm"
+#' meth["favc"] <- "2l.bin"
+#' meth["weight"] <- "2l.2stage.heckman"
+#' mice(obesity, pred = pred, meth = meth)
 #' @export
 #'
 
@@ -76,7 +81,7 @@ mice.impute.2l.2stage.heckman <-
       colnames(x)[type == -4] # names of variables in outcome model alone
 
     # # Define y type
-    if (class(y) == "factor" & nlevels(y) == 2) {
+    if (is.factor(y) & nlevels(y) == 2) {
       family <- "binomial"
     } else{
       family <- "gaussian"
@@ -105,11 +110,11 @@ mice.impute.2l.2stage.heckman <-
 
     # Define outcome and selection equation
     out <-
-      as.formula(paste0("y", "~", paste(c(
+      stats::as.formula(paste0("y", "~", paste(c(
         bos_name, out_name
       ), collapse = "+")))
     sel <-
-      as.formula(paste0("ry", "~", paste(c(
+      stats::as.formula(paste0("ry", "~", paste(c(
         sel_name, bos_name
       ), collapse = "+")))
 
@@ -735,7 +740,7 @@ gen_y_star <-
                p.star == "1" | (is.infinite(p.star) & p.star > 0)] <- 1.0
 
       y.star <- rep(levels(y)[1], nrow(XOBO))
-      y.star[runif(nrow(XOBO)) < p.star] <- levels(y)[2]
+      y.star[stats::runif(nrow(XOBO)) < p.star] <- levels(y)[2]
 
     }
 
