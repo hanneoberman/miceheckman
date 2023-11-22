@@ -75,9 +75,14 @@ Added:
 \examples{
 # example code
 library(mice)
-pred <- make.predictorMatrix(nhanes)
-pred[, "age"] <- -3
-mice(nhanes, pred = pred, meth = "2l.2stage.heckman")
+pred <- make.predictorMatrix(obesity)
+pred[, "cluster"] <- -2
+pred[, "time"] <- -3
+meth <- make.method(obesity)
+meth[c("age", "height")] <- "2l.norm"
+meth["favc"] <- "2l.bin"
+meth["weight"] <- "2l.2stage.heckman"
+mice(obesity, pred = pred, meth = meth)
 }
 \author{
 Julius Center Methods Group UMC, 2022

@@ -9,10 +9,9 @@
 #'   \item{gender}{Gender (0 = male, 1 = female)}
 #'   \item{age}{Age (in years)}
 #'   \item{height}{Height (in meters)}
+#'   \item{favc}{Frequent consumption of high caloric food (0 = no, 1 = yes)}
 #'   \item{weight}{Weight (in kilograms)}
-#'   \item{bmi}{Body Mass Index (in kilograms per square meter)}
-#'   \item{rt}{Response time (in minutes)}
-#'   ...
+#'   \item{time}{Response time (in minutes)}
 #' }
 #' @source <https://www.kaggle.com/datasets/fabinmndez/obesitydata>
 "obesity"
